@@ -1,0 +1,192 @@
+---
+alwaysApply: true
+---
+You are working on a full-stack Generative AI project titled:
+
+"Module Extraction AI Agent for Product Documentation"
+
+This project is built for Pulsegen.io, a GenAI-first startup focused on revolutionizing
+Product Management for global SaaS companies.
+
+The system must reflect strong product thinking, clean engineering, and practical GenAI usage.
+All decisions should prioritize clarity, maintainability, and PM-aligned outcomes.
+
+----------------------------------------
+PROJECT OVERVIEW
+----------------------------------------
+
+Goal:
+Build a local, full-stack GenAI application that:
+1. Accepts one or more SaaS product documentation URLs
+2. Crawls and cleans documentation content
+3. Uses LLM-based reasoning to infer:
+   - Product modules
+   - Submodules under each module
+   - Clear, PM-style descriptions
+4. Returns structured, machine-readable output
+5. Displays results in a simple, usable web interface
+
+This tool should feel like an internal Product Intelligence utility for PMs.
+
+----------------------------------------
+EXPECTED OUTPUT
+----------------------------------------
+
+The system must return structured data in the following format:
+
+[
+  {
+    "module": "Module Name",
+    "description": "High-level description of the module from a product perspective",
+    "submodules": {
+      "Submodule Name": "Concise description of the submodule functionality"
+    }
+  }
+]
+
+The output must:
+- Be derived strictly from the provided documentation
+- Avoid hallucinations
+- Use concise, professional language suitable for PMs
+- Maintain consistent naming and grouping
+
+----------------------------------------
+TECH STACK (LOCAL ONLY)
+----------------------------------------
+
+Backend:
+- Python 3.10+
+- FastAPI (REST API)
+- Requests + BeautifulSoup (content crawling & cleaning)
+- Pydantic (schema validation)
+- OpenAI-compatible LLM API
+- dotenv for environment variables
+
+Frontend:
+- React (Vite)
+- Plain CSS or minimal styling
+- Fetch/Axios for API calls
+
+No hosting, authentication, or cloud deployment is required.
+The system must run fully on localhost.
+
+----------------------------------------
+ARCHITECTURAL PRINCIPLES
+----------------------------------------
+
+- Clear separation of concerns:
+  - Crawling logic
+  - Content processing
+  - LLM interaction
+  - API layer
+  - UI layer
+
+- Backend must expose a single clear API:
+  POST /extract
+  Input: list of URLs
+  Output: structured module JSON
+
+- Frontend must:
+  - Accept URL input
+  - Trigger extraction
+  - Render modules, descriptions, and submodules clearly
+
+----------------------------------------
+GENAI USAGE GUIDELINES
+----------------------------------------
+
+- LLMs must be used for:
+  - Inferring modules and submodules
+  - Generating human-readable descriptions
+  - Grouping related features logically
+
+- Prompts should:
+  - Explicitly request structured JSON
+  - Encourage PM-style reasoning
+  - Minimize verbosity
+  - Avoid speculative content
+
+- Temperature should remain low (≤ 0.3) to ensure consistency.
+
+----------------------------------------
+CRAWLING & CONTENT RULES
+----------------------------------------
+
+- Crawl only relevant internal documentation links
+- Ignore navigation, headers, footers, scripts, and styles
+- Handle broken links and timeouts gracefully
+- Apply reasonable limits on:
+  - Number of pages crawled
+  - Total text length (token-aware truncation)
+
+----------------------------------------
+BEST PRACTICES TO FOLLOW
+----------------------------------------
+
+Code Quality:
+- Clean, readable, well-named functions
+- Modular files with single responsibility
+- Avoid monolithic scripts
+- Add minimal but meaningful comments
+
+Error Handling:
+- Fail gracefully if crawling or LLM parsing fails
+- Never crash the server on bad input
+- Return empty or partial results if needed
+
+Security:
+- Never hardcode API keys
+- Use environment variables for secrets
+- Do not log sensitive content
+
+Performance:
+- Avoid unnecessary re-processing
+- Limit LLM input size thoughtfully
+
+----------------------------------------
+DELIVERABLES
+----------------------------------------
+
+The final submission must include:
+
+1. A working local full-stack application
+2. Clean backend and frontend codebases
+3. A clear README explaining:
+   - Problem statement
+   - Why this matters for Product Management
+   - System architecture
+   - AI approach
+   - Assumptions and limitations
+   - How to run locally
+4. Example outputs generated from real documentation URLs
+5. A short demo video (3–5 minutes) explaining:
+   - The problem
+   - The solution
+   - Architecture overview
+   - Live demo
+   - Alignment with Pulsegen’s mission
+
+----------------------------------------
+NON-GOALS (DO NOT BUILD)
+----------------------------------------
+
+- Authentication or user management
+- Cloud hosting or deployment
+- CI/CD pipelines
+- Styling-heavy UI
+- Over-engineered microservices
+- Hard-coded assumptions about specific products
+
+----------------------------------------
+EVALUATION MINDSET
+----------------------------------------
+
+This project will be evaluated on:
+- Clarity of thought
+- Product Management alignment
+- Practical GenAI usage
+- Full-stack ownership
+- Code quality and structure
+- Ability to ship a meaningful MVP quickly
+
+Optimize for signal, not scope.

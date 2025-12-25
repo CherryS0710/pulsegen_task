@@ -105,27 +105,52 @@ async def extract_modules(request: ExtractRequest):
                 detail="Failed to crawl any of the provided URLs. They may be inaccessible, require authentication, or timed out."
             )
         
-        # Log what we're sending to LLM
-        print(f"\n=== Sending to LLM ===")
+        # Extract modules per URL (separate extraction for each URL)
+        all_modules_by_url = []
+        
+        print(f"\n=== Processing URLs Separately ===")
         print(f"Total URLs processed: {len(processed_urls)}")
-        print(f"Total content items: {len(all_content)}")
+        
         for item in all_content:
-            print(f"  - {item['url']}: {len(item['content'])} characters")
-        print(f"=====================\n")
+            url = item['url']
+            content = item['content']
+            
+            print(f"\nExtracting modules from: {url}")
+            print(f"Content length: {len(content)} characters")
+            
+            # Extract modules for this specific URL
+            try:
+                modules_for_url = await extractor.extract_modules([item])
+                
+                if modules_for_url:
+                    print(f"  ✓ Extracted {len(modules_for_url)} module(s) from {url}")
+                    all_modules_by_url.append({
+                        "url": url,
+                        "modules": modules_for_url
+                    })
+                else:
+                    print(f"  ⚠ No modules extracted from {url}")
+                    all_modules_by_url.append({
+                        "url": url,
+                        "modules": []
+                    })
+            except Exception as e:
+                print(f"  ✗ Error extracting from {url}: {str(e)}")
+                all_modules_by_url.append({
+                    "url": url,
+                    "modules": []
+                })
         
-        # Extract modules using LLM
-        modules = await extractor.extract_modules(all_content)
+        print(f"\n=== Summary ===")
+        total_modules = sum(len(item['modules']) for item in all_modules_by_url)
+        print(f"Total modules across all URLs: {total_modules}")
+        for item in all_modules_by_url:
+            print(f"  - {item['url']}: {len(item['modules'])} modules")
+        print(f"================\n")
         
-        # Add source URL information to modules for tracking
-        # (This helps verify all URLs were processed)
-        if modules:
-            print(f"\n=== Extracted Modules ===")
-            print(f"Total modules extracted: {len(modules)}")
-            for module in modules:
-                print(f"  - {module.get('module', 'Unknown')}: {len(module.get('submodules', {}))} submodules")
-            print(f"========================\n")
-        
-        return ExtractResponse(modules=modules)
+        # Return modules with URL information
+        # Format: [{"url": "...", "modules": [...]}, ...]
+        return ExtractResponse(modules=all_modules_by_url)
     
     except HTTPException:
         raise

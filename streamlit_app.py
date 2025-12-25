@@ -172,6 +172,147 @@ def extract_modules(urls: List[str]) -> dict:
         st.error(f"Error calling backend API: {str(e)}")
         return None
 
+def display_modules_by_url(modules_by_url: List[dict]):
+    """Display modules in separate tables for each URL."""
+    if not modules_by_url or len(modules_by_url) == 0:
+        st.info(" No modules found in the documentation.")
+        return
+    
+    # Calculate overall statistics
+    total_modules = 0
+    total_submodules = 0
+    for url_data in modules_by_url:
+        modules = url_data.get('modules', [])
+        total_modules += len(modules)
+        total_submodules += sum(len(m.get('submodules', {})) for m in modules)
+    
+    # Overall statistics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+        <div class="stat-box">
+            <div class="stat-number">{len(modules_by_url)}</div>
+            <div class="stat-label">URLs Processed</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <div class="stat-box">
+            <div class="stat-number">{total_modules}</div>
+            <div class="stat-label">Total Modules</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"""
+        <div class="stat-box">
+            <div class="stat-number">{total_submodules}</div>
+            <div class="stat-label">Total Submodules</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Display separate table for each URL
+    for url_idx, url_data in enumerate(modules_by_url, 1):
+        url = url_data.get('url', 'Unknown URL')
+        modules = url_data.get('modules', [])
+        
+        if not modules:
+            st.markdown(f"### 📄 URL {url_idx}: {url}")
+            st.info(f"No modules found in this documentation URL.")
+            st.markdown("---")
+            continue
+        
+        # Header for this URL's table
+        st.markdown(f"### 📄 URL {url_idx}: {url}")
+        st.markdown(f"**Extracted {len(modules)} module(s) from this documentation source**")
+        st.markdown("")
+        
+        # Prepare table data for this URL
+        table_data = []
+        for idx, module in enumerate(modules, 1):
+            module_name = module.get('module', 'Unknown Module')
+            description = module.get('description', '')
+            submodules = module.get('submodules', {})
+            submodule_count = len(submodules)
+            
+            # Create submodule list with descriptions
+            submodule_details = []
+            for sub_name, sub_desc in list(submodules.items())[:5]:  # First 5
+                submodule_details.append(f"{sub_name}: {sub_desc[:50]}...")
+            submodule_list = " | ".join(submodule_details) if submodule_details else "No submodules"
+            if len(submodules) > 5:
+                submodule_list += f" | ... and {len(submodules) - 5} more"
+            
+            table_data.append({
+                "#": idx,
+                "Module Name": module_name,
+                "Description": description,
+                "Submodules Count": submodule_count,
+                "Submodules": submodule_list
+            })
+        
+        # Display table for this URL
+        df = pd.DataFrame(table_data)
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "#": st.column_config.NumberColumn("#", width="small", format="%d"),
+                "Module Name": st.column_config.TextColumn(
+                    "Module Name", 
+                    width="medium",
+                    help="Name of the extracted module"
+                ),
+                "Description": st.column_config.TextColumn(
+                    "Description", 
+                    width="large",
+                    help="Description of the module"
+                ),
+                "Submodules Count": st.column_config.NumberColumn(
+                    "Submodules", 
+                    width="small",
+                    format="%d",
+                    help="Number of submodules"
+                ),
+                "Submodules": st.column_config.TextColumn(
+                    "Submodules List", 
+                    width="xlarge",
+                    help="List of submodules with descriptions"
+                )
+            }
+        )
+        
+        # Detailed submodules table for this URL
+        if any(len(m.get('submodules', {})) > 0 for m in modules):
+            with st.expander(f"🔹 View all submodules from URL {url_idx}", expanded=False):
+                submodules_table_data = []
+                for module in modules:
+                    module_name = module.get('module', 'Unknown')
+                    submodules = module.get('submodules', {})
+                    for sub_name, sub_desc in submodules.items():
+                        submodules_table_data.append({
+                            "Module": module_name,
+                            "Submodule Name": sub_name,
+                            "Submodule Description": sub_desc
+                        })
+                
+                if submodules_table_data:
+                    submodules_df = pd.DataFrame(submodules_table_data)
+                    st.dataframe(
+                        submodules_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Module": st.column_config.TextColumn("Module", width="medium"),
+                            "Submodule Name": st.column_config.TextColumn("Submodule Name", width="medium"),
+                            "Submodule Description": st.column_config.TextColumn("Description", width="large")
+                        }
+                    )
+        
+        st.markdown("---")
+
 def display_modules(modules: List[dict], source_urls: List[str] = None):
     """Display extracted modules in tabular and card format."""
     if not modules or len(modules) == 0:
@@ -398,27 +539,42 @@ if extract_button:
                 status_text.empty()
                 progress_bar.empty()
                 
-                modules = result.get('modules', [])
-                if modules:
+                modules_data = result.get('modules', [])
+                
+                # Check if modules_data is in new format (list of {url, modules}) or old format (list of modules)
+                if modules_data and isinstance(modules_data[0], dict) and 'url' in modules_data[0]:
+                    # New format: separate tables per URL
                     st.markdown("---")
-                    st.markdown("## 📊 Results: Structured Module Data")
-                    st.success(f"✅ Successfully extracted and structured {len(modules)} module(s) from {len(valid_urls)} documentation URL(s)")
+                    st.markdown("## 📊 Results: Structured Module Data by URL")
                     
-                    # Show which URLs were processed
-                    if len(valid_urls) > 1:
-                        with st.expander(f"📎 Source URLs Processed ({len(valid_urls)})", expanded=False):
-                            for idx, url in enumerate(valid_urls, 1):
-                                st.markdown(f"{idx}. {url}")
-                    else:
-                        st.info(f"📎 Source URL: {valid_urls[0]}")
-                    
+                    total_modules = sum(len(item.get('modules', [])) for item in modules_data)
+                    st.success(f"✅ Successfully extracted and structured {total_modules} module(s) from {len(modules_data)} documentation URL(s)")
                     st.markdown("")
-                    display_modules(modules, valid_urls)
                     
-                    st.markdown("---")
+                    display_modules_by_url(modules_data)
                     
                     # Download JSON button
-                    json_str = json.dumps(modules, indent=2)
+                    json_str = json.dumps(modules_data, indent=2)
+                    col1, col2, col3 = st.columns([1, 1, 1])
+                    with col2:
+                        st.download_button(
+                            label="📥 Download JSON",
+                            data=json_str,
+                            file_name="extracted_modules_by_url.json",
+                            mime="application/json",
+                            use_container_width=True
+                        )
+                elif modules_data:
+                    # Old format: merged modules (fallback) - shouldn't happen with new backend
+                    st.markdown("---")
+                    st.markdown("## 📊 Results: Structured Module Data")
+                    st.warning("⚠️ Received merged format. Backend should return per-URL format.")
+                    st.markdown("")
+                    # Simple display for fallback
+                    st.dataframe(pd.DataFrame(modules_data), use_container_width=True)
+                    
+                    # Download JSON button
+                    json_str = json.dumps(modules_data, indent=2)
                     col1, col2, col3 = st.columns([1, 1, 1])
                     with col2:
                         st.download_button(

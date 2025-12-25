@@ -42,7 +42,7 @@ st.markdown("""
 # Backend API URL
 BACKEND_URL = st.sidebar.text_input(
     "Backend API URL",
-    value="http://localhost:8000",
+    value="https://pulsegen-task.onrender.com",
     help="URL of the FastAPI backend server"
 )
 

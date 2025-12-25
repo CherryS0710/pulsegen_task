@@ -50,18 +50,32 @@ class ModuleExtractor:
         num_urls = len(content)
         url_list = ", ".join([item['url'] for item in content])
         
+        # Create a clear separator between different URL sources
+        content_sections = []
+        for idx, item in enumerate(content, 1):
+            content_sections.append(
+                f"\n{'='*80}\n"
+                f"SOURCE {idx} of {num_urls}: {item['url']}\n"
+                f"{'='*80}\n"
+                f"{item['content']}\n"
+            )
+        content_text = "\n".join(content_sections)
+        content_text = self._truncate_content(content_text)
+        
         prompt = f"""You are a Product Management AI assistant. Analyze the following product documentation from {num_urls} source{'s' if num_urls > 1 else ''} and extract the product modules and submodules.
 
-IMPORTANT: You are analyzing documentation from {num_urls} different URL{'s' if num_urls > 1 else ''}:
+CRITICAL: You MUST analyze documentation from ALL {num_urls} URL{'s' if num_urls > 1 else ''} provided:
 {url_list}
 
 Your task is to:
-1. Analyze ALL the documentation provided from ALL {num_urls} source{'s' if num_urls > 1 else ''}
-2. Identify distinct product modules (high-level feature areas) across ALL sources
-3. For each module, identify submodules (specific features or capabilities) from ALL sources
-4. Combine and merge related modules/submodules from different sources
-5. Provide clear, concise descriptions suitable for Product Managers
-6. Base your analysis strictly on the provided documentation - do not hallucinate features
+1. Analyze ALL the documentation provided from ALL {num_urls} source{'s' if num_urls > 1 else ''} - DO NOT skip any source
+2. Extract modules from EACH source - make sure you've reviewed content from all {num_urls} source{'s' if num_urls > 1 else ''}
+3. Identify distinct product modules (high-level feature areas) across ALL sources
+4. For each module, identify submodules (specific features or capabilities) from ALL sources
+5. Combine and merge related modules/submodules from different sources into unified entries
+6. If a module appears in multiple sources, merge them and include submodules from all sources
+7. Provide clear, concise descriptions suitable for Product Managers
+8. Base your analysis strictly on the provided documentation - do not hallucinate features
 
 Documentation Content from {num_urls} source{'s' if num_urls > 1 else ''}:
 {content_text}

@@ -1,12 +1,13 @@
 import streamlit as st
 import requests
 import json
+import pandas as pd
 from typing import List
 
 # Page configuration
 st.set_page_config(
     page_title="Module Extraction AI",
-    page_icon="🔍",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -171,10 +172,10 @@ def extract_modules(urls: List[str]) -> dict:
         st.error(f"Error calling backend API: {str(e)}")
         return None
 
-def display_modules(modules: List[dict]):
-    """Display extracted modules in a nice format."""
+def display_modules(modules: List[dict], source_urls: List[str] = None):
+    """Display extracted modules in tabular and card format."""
     if not modules or len(modules) == 0:
-        st.info("📭 No modules found in the documentation.")
+        st.info(" No modules found in the documentation.")
         return
     
     # Statistics
@@ -205,36 +206,68 @@ def display_modules(modules: List[dict]):
     
     st.markdown("---")
     
-    # Display modules
+    # Tabular View
+    st.markdown("### 📊 Modules Table")
+    
+    # Prepare table data
+    table_data = []
+    for idx, module in enumerate(modules, 1):
+        module_name = module.get('module', 'Unknown Module')
+        description = module.get('description', '')
+        submodules = module.get('submodules', {})
+        submodule_count = len(submodules)
+        submodule_list = ", ".join(list(submodules.keys())[:3])  # First 3 submodules
+        if len(submodules) > 3:
+            submodule_list += f" (+{len(submodules) - 3} more)"
+        
+        table_data.append({
+            "Module": module_name,
+            "Description": description[:100] + "..." if len(description) > 100 else description,
+            "Submodules": submodule_count,
+            "Submodule List": submodule_list if submodule_list else "None"
+        })
+    
+    # Display table
+    import pandas as pd
+    df = pd.DataFrame(table_data)
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Module": st.column_config.TextColumn("Module", width="medium"),
+            "Description": st.column_config.TextColumn("Description", width="large"),
+            "Submodules": st.column_config.NumberColumn("Submodules", width="small"),
+            "Submodule List": st.column_config.TextColumn("Submodule List", width="large")
+        }
+    )
+    
+    st.markdown("---")
+    st.markdown("### 📋 Detailed View")
+    
+    # Detailed card view with expanders
     for idx, module in enumerate(modules, 1):
         module_name = module.get('module', 'Unknown Module')
         description = module.get('description', '')
         submodules = module.get('submodules', {})
         
-        st.markdown(f"""
-        <div class="module-card">
-            <div class="module-name">🔷 {module_name}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if description:
-            st.markdown(f"**📝 Description:** {description}")
-            st.markdown("")
-        
-        if submodules:
-            st.markdown("**🔹 Submodules:**")
-            for sub_name, sub_desc in submodules.items():
-                st.markdown(f"""
-                <div class="submodule-item">
-                    <span class="submodule-name">• {sub_name}</span>
-                    <br>
-                    <span style="color: #666; font-size: 0.95rem;">{sub_desc}</span>
-                </div>
-                """, unsafe_allow_html=True)
+        with st.expander(f"🔷 {module_name} ({len(submodules)} submodules)", expanded=False):
+            if description:
+                st.markdown(f"**Description:** {description}")
+                st.markdown("")
+            
+            if submodules:
+                st.markdown("**Submodules:**")
+                for sub_name, sub_desc in submodules.items():
+                    st.markdown(f"""
+                    <div class="submodule-item">
+                        <span class="submodule-name">• {sub_name}</span>
+                        <br>
+                        <span style="color: #666; font-size: 0.95rem;">{sub_desc}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
         
         if idx < len(modules):
-            st.markdown("")
-            st.markdown("---")
             st.markdown("")
 
 # Main UI
@@ -247,7 +280,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # URL Input Section
-st.markdown("### 📝 Documentation URLs")
+st.markdown("###  Documentation URLs")
 st.markdown("Enter one or more documentation URLs to analyze. The AI will extract modules and submodules from all provided sources.")
 
 # URL input with better styling
@@ -262,7 +295,7 @@ urls_input = st.text_area(
 # Extract button
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    extract_button = st.button("🚀 Extract Modules", type="primary", use_container_width=True)
+    extract_button = st.button(" Extract Modules", type="primary", use_container_width=True)
 
 if extract_button:
     if not urls_input.strip():
@@ -297,19 +330,25 @@ if extract_button:
             result = extract_modules(valid_urls)
             progress_bar.progress(80)
             
-            if result:
-                progress_bar.progress(100)
-                status_text.empty()
-                progress_bar.empty()
-                
-                modules = result.get('modules', [])
-                if modules:
-                    st.markdown("---")
-                    st.markdown("### 📊 Extracted Modules")
-                    st.success(f"✅ Successfully extracted modules from {len(valid_urls)} documentation source(s)")
-                    st.markdown("")
+                if result:
+                    progress_bar.progress(100)
+                    status_text.empty()
+                    progress_bar.empty()
                     
-                    display_modules(modules)
+                    modules = result.get('modules', [])
+                    if modules:
+                        st.markdown("---")
+                        st.markdown("### 📊 Extracted Modules")
+                        st.success(f"✅ Successfully extracted {len(modules)} module(s) from {len(valid_urls)} documentation source(s)")
+                        
+                        # Show which URLs were processed
+                        if len(valid_urls) > 1:
+                            with st.expander(f"📎 Processed URLs ({len(valid_urls)})", expanded=False):
+                                for url in valid_urls:
+                                    st.markdown(f"• {url}")
+                        
+                        st.markdown("")
+                        display_modules(modules, valid_urls)
                     
                     st.markdown("---")
                     

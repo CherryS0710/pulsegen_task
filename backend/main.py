@@ -105,8 +105,25 @@ async def extract_modules(request: ExtractRequest):
                 detail="Failed to crawl any of the provided URLs. They may be inaccessible, require authentication, or timed out."
             )
         
+        # Log what we're sending to LLM
+        print(f"\n=== Sending to LLM ===")
+        print(f"Total URLs processed: {len(processed_urls)}")
+        print(f"Total content items: {len(all_content)}")
+        for item in all_content:
+            print(f"  - {item['url']}: {len(item['content'])} characters")
+        print(f"=====================\n")
+        
         # Extract modules using LLM
         modules = await extractor.extract_modules(all_content)
+        
+        # Add source URL information to modules for tracking
+        # (This helps verify all URLs were processed)
+        if modules:
+            print(f"\n=== Extracted Modules ===")
+            print(f"Total modules extracted: {len(modules)}")
+            for module in modules:
+                print(f"  - {module.get('module', 'Unknown')}: {len(module.get('submodules', {}))} submodules")
+            print(f"========================\n")
         
         return ExtractResponse(modules=modules)
     

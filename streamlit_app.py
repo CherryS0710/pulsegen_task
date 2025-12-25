@@ -206,41 +206,97 @@ def display_modules(modules: List[dict], source_urls: List[str] = None):
     
     st.markdown("---")
     
-    # Tabular View
-    st.markdown("### 📊 Modules Table")
+    # Primary Tabular View - Main Display
+    st.markdown("### 📊 Extracted Modules Table")
+    st.markdown("**Structured data extracted from all documentation URLs:**")
     
-    # Prepare table data
+    # Prepare comprehensive table data
     table_data = []
     for idx, module in enumerate(modules, 1):
         module_name = module.get('module', 'Unknown Module')
         description = module.get('description', '')
         submodules = module.get('submodules', {})
         submodule_count = len(submodules)
-        submodule_list = ", ".join(list(submodules.keys())[:3])  # First 3 submodules
-        if len(submodules) > 3:
-            submodule_list += f" (+{len(submodules) - 3} more)"
+        
+        # Create submodule list with descriptions
+        submodule_details = []
+        for sub_name, sub_desc in list(submodules.items())[:5]:  # First 5
+            submodule_details.append(f"{sub_name}: {sub_desc[:50]}...")
+        submodule_list = " | ".join(submodule_details) if submodule_details else "No submodules"
+        if len(submodules) > 5:
+            submodule_list += f" | ... and {len(submodules) - 5} more"
         
         table_data.append({
-            "Module": module_name,
-            "Description": description[:100] + "..." if len(description) > 100 else description,
-            "Submodules": submodule_count,
-            "Submodule List": submodule_list if submodule_list else "None"
+            "#": idx,
+            "Module Name": module_name,
+            "Description": description,
+            "Submodules Count": submodule_count,
+            "Submodules": submodule_list
         })
     
-    # Display table
-    import pandas as pd
+    # Display main table with better formatting
     df = pd.DataFrame(table_data)
+    
+    # Use st.data_editor for better table display with sorting
     st.dataframe(
         df,
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Module": st.column_config.TextColumn("Module", width="medium"),
-            "Description": st.column_config.TextColumn("Description", width="large"),
-            "Submodules": st.column_config.NumberColumn("Submodules", width="small"),
-            "Submodule List": st.column_config.TextColumn("Submodule List", width="large")
+            "#": st.column_config.NumberColumn("#", width="small", format="%d"),
+            "Module Name": st.column_config.TextColumn(
+                "Module Name", 
+                width="medium",
+                help="Name of the extracted module"
+            ),
+            "Description": st.column_config.TextColumn(
+                "Description", 
+                width="large",
+                help="Description of the module"
+            ),
+            "Submodules Count": st.column_config.NumberColumn(
+                "Submodules", 
+                width="small",
+                format="%d",
+                help="Number of submodules"
+            ),
+            "Submodules": st.column_config.TextColumn(
+                "Submodules List", 
+                width="xlarge",
+                help="List of submodules with descriptions"
+            )
         }
     )
+    
+    # Additional detailed submodules table
+    if any(len(m.get('submodules', {})) > 0 for m in modules):
+        st.markdown("---")
+        st.markdown("### 🔹 Detailed Submodules Table")
+        
+        # Flatten submodules into separate rows
+        submodules_table_data = []
+        for module in modules:
+            module_name = module.get('module', 'Unknown')
+            submodules = module.get('submodules', {})
+            for sub_name, sub_desc in submodules.items():
+                submodules_table_data.append({
+                    "Module": module_name,
+                    "Submodule Name": sub_name,
+                    "Submodule Description": sub_desc
+                })
+        
+        if submodules_table_data:
+            submodules_df = pd.DataFrame(submodules_table_data)
+            st.dataframe(
+                submodules_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Module": st.column_config.TextColumn("Module", width="medium"),
+                    "Submodule Name": st.column_config.TextColumn("Submodule Name", width="medium"),
+                    "Submodule Description": st.column_config.TextColumn("Description", width="large")
+                }
+            )
     
     st.markdown("---")
     st.markdown("### 📋 Detailed View")
@@ -280,17 +336,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # URL Input Section
-st.markdown("###  Documentation URLs")
-st.markdown("Enter one or more documentation URLs to analyze. The AI will extract modules and submodules from all provided sources.")
+st.markdown("### 📝 Input: Documentation URLs")
+st.markdown("**Enter one or more help documentation URLs** (one per line). The system will extract and structure modules from all provided sources.")
 
 # URL input with better styling
 urls_input = st.text_area(
     "Documentation URLs",
     height=120,
-    placeholder="https://docs.example.com\nhttps://docs.example.com/api\nhttps://docs.example.com/guides",
-    help="Enter documentation URLs, one per line. The system will crawl and analyze all URLs.",
+    placeholder="https://docs.example.com\nhttps://docs.example.com/api\nhttps://docs.example.com/guides\nhttps://docs.example.com/tutorials",
+    help="Enter one or more documentation URLs, one per line. All URLs will be processed and results will be displayed in structured table format.",
     label_visibility="visible"
 )
+
+# Show input validation
+if urls_input.strip():
+    urls = [url.strip() for url in urls_input.strip().split('\n') if url.strip()]
+    valid_count = sum(1 for url in urls if url.startswith('http://') or url.startswith('https://'))
+    if valid_count > 0:
+        st.info(f"✓ {valid_count} valid URL(s) detected. Ready to extract modules.")
 
 # Extract button
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -330,25 +393,27 @@ if extract_button:
             result = extract_modules(valid_urls)
             progress_bar.progress(80)
             
-                if result:
-                    progress_bar.progress(100)
-                    status_text.empty()
-                    progress_bar.empty()
+            if result:
+                progress_bar.progress(100)
+                status_text.empty()
+                progress_bar.empty()
+                
+                modules = result.get('modules', [])
+                if modules:
+                    st.markdown("---")
+                    st.markdown("## 📊 Results: Structured Module Data")
+                    st.success(f"✅ Successfully extracted and structured {len(modules)} module(s) from {len(valid_urls)} documentation URL(s)")
                     
-                    modules = result.get('modules', [])
-                    if modules:
-                        st.markdown("---")
-                        st.markdown("### 📊 Extracted Modules")
-                        st.success(f"✅ Successfully extracted {len(modules)} module(s) from {len(valid_urls)} documentation source(s)")
-                        
-                        # Show which URLs were processed
-                        if len(valid_urls) > 1:
-                            with st.expander(f"📎 Processed URLs ({len(valid_urls)})", expanded=False):
-                                for url in valid_urls:
-                                    st.markdown(f"• {url}")
-                        
-                        st.markdown("")
-                        display_modules(modules, valid_urls)
+                    # Show which URLs were processed
+                    if len(valid_urls) > 1:
+                        with st.expander(f"📎 Source URLs Processed ({len(valid_urls)})", expanded=False):
+                            for idx, url in enumerate(valid_urls, 1):
+                                st.markdown(f"{idx}. {url}")
+                    else:
+                        st.info(f"📎 Source URL: {valid_urls[0]}")
+                    
+                    st.markdown("")
+                    display_modules(modules, valid_urls)
                     
                     st.markdown("---")
                     
@@ -364,6 +429,8 @@ if extract_button:
                             use_container_width=True
                         )
                 else:
+                    progress_bar.empty()
+                    status_text.empty()
                     st.warning("⚠️ No modules found in the documentation. The URLs may not contain extractable module information.")
             else:
                 progress_bar.empty()
@@ -416,4 +483,3 @@ with st.sidebar:
     - Processing takes 30-90 seconds
     - Results are merged from all sources
     """)
-

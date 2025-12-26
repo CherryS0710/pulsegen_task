@@ -3,6 +3,7 @@
 A full-stack Generative AI application that extracts structured product modules and submodules from SaaS product documentation. Built for Pulsegen.io, a GenAI-first startup focused on revolutionizing Product Management for global SaaS companies.
 
 APPLICATION LINK- https://cherrys0710-pulsegen-task-streamlit-app-fsuc4m.streamlit.app/
+
 PROJECT EXPLANATION VIDEO LINK - https://drive.google.com/file/d/1GNPwdYSjLishdxE75trJn8c5gsw7n0Zt/view?usp=share_link
 
 ## Problem Statement
